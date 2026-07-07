@@ -1,0 +1,46 @@
+## Build output
+bin/
+obj/
+
+## NuGet
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+project.lock.json
+
+## User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Visual Studio / Rider local settings
+.vs/
+*.rsuser
+.idea/**/workspace.xml
+.idea/**/shelf/
+.idea/**/contentModel.xml
+
+## Secrets — use dotnet user-secrets for local overrides
+**/appsettings.*.local.json
+**/secrets.json
+
+## SQLite databases (runtime artefacts, not source)
+*.db
+*.db-wal
+*.db-shm
+
+## Environment files
+.env
+.env.*
+
+## Test results
+TestResults/
+coverage/
+*.trx
+*.coveragexml
+
+## OS artefacts
+.DS_Store
+Thumbs.db

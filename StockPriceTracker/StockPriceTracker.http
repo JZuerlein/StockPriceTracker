@@ -1,0 +1,54 @@
+@host = https://localhost:7060
+@adminToken = <paste token from /auth/login response>
+@userToken = <paste token from /auth/login response>
+
+### Register a new user
+POST {{host}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+
+###
+
+### Login as admin (seeded automatically in Development)
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "Admin123!"
+}
+
+###
+
+### Login as regular user
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+
+###
+
+### Add a stock ticker (requires administrator role)
+POST {{host}}/stocks
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "ticker": "AAPL",
+  "price": 189.45
+}
+
+###
+
+### Get a stock price (requires any authenticated user)
+GET {{host}}/stocks/AAPL
+Authorization: Bearer {{userToken}}
+
+###
