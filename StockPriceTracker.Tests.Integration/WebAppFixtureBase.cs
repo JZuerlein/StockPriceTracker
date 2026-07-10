@@ -41,8 +41,31 @@ public abstract class WebAppFixtureBase : IAsyncLifetime
     
     public async Task InitializeAsync()
     {
+        // Each phase depends on the previous one having completed. Expressing that as four
+        // named, ordered statements keeps the sequential dependency visible: the database is
+        // running before the host reads its connection string, and the host is built before
+        // we seed. See MaterializeHost for why the build is forced explicitly rather than
+        // left to the first test that touches the factory.
         await StartDatabaseAsync();
+        BuildFactory();
+        var host = MaterializeHost();
+        await SeedAsync(host);
 
+        // Postcondition: the fixture must be fully materialized once InitializeAsync returns.
+        // If a future refactor moves the forcing out of MaterializeHost (e.g. by making seeding
+        // lazy), these fields would silently drift to null until the first test touched the
+        // factory. Assert them here so that regression fails loudly, in setup, with a clear cause.
+        if (_factory is null)
+            throw new InvalidOperationException(
+                "WebAppFixture initialization completed without building the WebApplicationFactory.");
+        if (Configuration is null)
+            throw new InvalidOperationException(
+                "WebAppFixture initialization completed without materializing the host configuration. " +
+                "Ensure MaterializeHost forces the host to build before InitializeAsync returns.");
+    }
+
+    private void BuildFactory()
+    {
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
@@ -78,11 +101,23 @@ public abstract class WebAppFixtureBase : IAsyncLifetime
 
                     services.AddSingleton<TimeProvider>(TimeProvider);
                 });
-                
-                
             });
-        
-        using var scope = _factory.Services.CreateScope();
+    }
+
+    /// <summary>
+    /// Forces the <see cref="WebApplicationFactory{TEntryPoint}"/> to build its host now and
+    /// returns the root service provider. The WithWebHostBuilder callback (including
+    /// GetConnectionString and the assignment to <see cref="Configuration"/>) runs lazily on
+    /// first access to <c>Services</c>. Triggering it here — while the database is known to be
+    /// running — pins host construction to a deterministic point in the lifecycle instead of
+    /// leaving it to whichever test first calls CreateClient(). Building the host does not open
+    /// a database connection; that happens during seeding.
+    /// </summary>
+    private IServiceProvider MaterializeHost() => _factory.Services;
+
+    private async Task SeedAsync(IServiceProvider host)
+    {
+        using var scope = host.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await PopulateDbAsync(context);
     }
