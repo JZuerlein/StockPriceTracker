@@ -1,6 +1,6 @@
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDatabase(builder.Configuration);
+builder.Services.AddSqlite();
 builder.Services.AddIdentityAndAuth(builder.Configuration);
 builder.Services.AddOpenApi();
 
@@ -14,8 +14,12 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseAntiforgery();
 
 app.MapAuthEndpoints();
 app.MapStockEndpoints();
 
 app.Run();
+
+// Expose Program to the integration test project
+public partial class Program { }
