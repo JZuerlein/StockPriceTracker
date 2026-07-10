@@ -19,7 +19,7 @@ public static class StockEndpoints
         return stock is null ? Results.NotFound() : Results.Ok(stock);
     }
 
-    private static async Task<IResult> AddStock(StockRequest req, AppDbContext db)
+    private static async Task<IResult> AddStock(StockRequest req, AppDbContext db, TimeProvider timeProvider)
     {
         var ticker = req.Ticker.Trim().ToUpper();
         if (string.IsNullOrEmpty(ticker))
@@ -28,7 +28,7 @@ public static class StockEndpoints
         if (await db.Stocks.FindAsync(ticker) is not null)
             return Results.Conflict($"Ticker '{ticker}' already exists.");
 
-        var stock = new Stock { Ticker = ticker, Price = req.Price, LastUpdated = DateTime.UtcNow };
+        var stock = new Stock { Ticker = ticker, Price = req.Price, LastUpdated = timeProvider.GetUtcNow().UtcDateTime };
         db.Stocks.Add(stock);
         await db.SaveChangesAsync();
 
@@ -36,4 +36,4 @@ public static class StockEndpoints
     }
 }
 
-record StockRequest(string Ticker, decimal Price);
+public record StockRequest(string Ticker, decimal Price);

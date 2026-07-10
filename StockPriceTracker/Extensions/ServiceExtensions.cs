@@ -3,22 +3,29 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Infrastructure;
 
 public static class ServiceExtensions
 {
-    public static IServiceCollection AddDatabase(this IServiceCollection services, IConfiguration config)
+    public static IServiceCollection AddSqlite(this IServiceCollection services, Action<SqliteDbContextOptionsBuilder>? configureSqliteOptions = null)
     {
-        var connectionString = config.GetConnectionString("DefaultConnection") ?? "Data Source=stocks.db";
-        var provider = config["DatabaseProvider"] ?? "sqlite";
+        var configuration = services.BuildServiceProvider().GetRequiredService<IConfiguration>();
+        var connectionString = configuration.GetConnectionString("DefaultConnection") ?? "Data Source=stocks.db";
 
-        services.AddDbContext<AppDbContext>(options =>
-        {
-            if (provider.Equals("postgres", StringComparison.OrdinalIgnoreCase))
-                options.UseNpgsql(connectionString);
-            else
-                options.UseSqlite(connectionString);
-        });
+        services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
+        
+        return services;
+    }
 
+    public static IServiceCollection AddPostgreSql(this IServiceCollection services,
+        Action<NpgsqlDbContextOptionsBuilder>? configureNpgsqlOptions = null)
+    {
+        var configuration = services.BuildServiceProvider().GetRequiredService<IConfiguration>();
+        var connectionString = configuration.GetConnectionString("DefaultConnection");
+
+        services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+        
         return services;
     }
 
@@ -56,7 +63,9 @@ public static class ServiceExtensions
             });
 
         services.AddAuthorization();
+        services.AddAntiforgery();
         services.AddSingleton(new TokenService(jwtKey, jwtIssuer));
+        services.AddSingleton(TimeProvider.System);
 
         return services;
     }
