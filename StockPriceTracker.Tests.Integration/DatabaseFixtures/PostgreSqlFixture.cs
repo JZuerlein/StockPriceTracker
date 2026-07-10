@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using Testcontainers.PostgreSql;
 
 namespace StockPriceTracker.Tests.Integration.DatabaseFixtures;
@@ -8,13 +9,20 @@ namespace StockPriceTracker.Tests.Integration.DatabaseFixtures;
 /// </summary>
 public class PostgreSqlFixture : WebAppFixtureBase
 {
-    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder().Build();
+    private static readonly PostgreSqlContainer SharedContainer = new PostgreSqlBuilder().Build();
+    private static readonly Lazy<Task> ContainerStart = new(() => SharedContainer.StartAsync());
+
+    private readonly string _databaseName = $"StockPriceTracker_{Guid.NewGuid():N}";
 
     protected override string ConnectionStringConfigKey => "ConnectionStrings:DefaultConnection";
 
     protected override string GetConnectionString()
     {
-        return _dbContainer.GetConnectionString();
+        var builder = new NpgsqlConnectionStringBuilder(SharedContainer.GetConnectionString())
+        {
+            Database = _databaseName
+        };
+        return builder.ToString();
     }
 
     protected override void ConfigureDatabaseServices(IServiceCollection services)
@@ -22,13 +30,7 @@ public class PostgreSqlFixture : WebAppFixtureBase
         services.AddPostgreSql();
     }
 
-    protected override async Task StartDatabaseAsync()
-    {
-        await _dbContainer.StartAsync();
-    }
+    protected override Task StartDatabaseAsync() => ContainerStart.Value;
 
-    protected override async Task StopDatabaseAsync()
-    {
-        await _dbContainer.StopAsync();
-    }
+    protected override Task StopDatabaseAsync() => Task.CompletedTask;
 }
