@@ -8,33 +8,23 @@ namespace StockPriceTracker.Tests.Integration.DatabaseFixtures;
 /// </summary>
 public class SqliteFixture : WebAppFixtureBase
 {
-    private readonly string _filename = $"{Guid.NewGuid()}.sqlite";
+    // Unique per fixture instance, so parallel test classes never share a file.
+    private readonly string _filename = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.sqlite");
 
-    protected override string ConnectionStringConfigKey => "ConnectionStrings:DefaultConnection";
-
-    protected override string GetConnectionString()
-    {
-        return $"Data Source={_filename};Pooling=False";
-    }
+    // Pooling=False is required for teardown: with pooling on, disposing a connection keeps the
+    // file handle open in the pool, so File.Delete would race a live handle and throw.
+    protected override string GetConnectionString() => $"Data Source={_filename};Pooling=False";
 
     protected override void ConfigureDatabaseServices(IServiceCollection services)
     {
         services.AddSqlite();
     }
 
-    protected override Task StartDatabaseAsync()
-    {
-        // Clean up any existing file
-        if (File.Exists(_filename))
-        {
-            File.Delete(_filename);
-        }
-        return Task.CompletedTask;
-    }
+    // SQLite needs no startup — the file is created on demand when the schema is seeded.
+    protected override Task StartDatabaseAsync() => Task.CompletedTask;
 
     protected override Task StopDatabaseAsync()
     {
-        // Clean up the database file
         try
         {
             if (File.Exists(_filename))
@@ -44,7 +34,7 @@ public class SqliteFixture : WebAppFixtureBase
         }
         catch (IOException)
         {
-            // Ignore cleanup errors
+            // A leftover temp file is harmless; don't fail the run over cleanup.
         }
         return Task.CompletedTask;
     }

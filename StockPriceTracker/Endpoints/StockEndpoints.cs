@@ -1,3 +1,5 @@
+using StockPriceTracker.Security;
+
 public static class StockEndpoints
 {
     public static void MapStockEndpoints(this WebApplication app)
@@ -10,6 +12,7 @@ public static class StockEndpoints
 
         group.MapPost("", AddStock)
             .RequireAuthorization(policy => policy.RequireRole("administrator"))
+            .AddEndpointFilter<CookieAntiforgeryFilter>()
             .WithName("AddStock");
     }
 

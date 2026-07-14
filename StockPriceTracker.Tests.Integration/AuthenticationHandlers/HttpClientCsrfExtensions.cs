@@ -8,33 +8,33 @@ namespace StockPriceTracker.Tests.Integration.AuthenticationHandlers;
 public static class HttpClientCsrfExtensions
 {
     private const string CsrfHeaderName = "X-XSRF-TOKEN";
-    private const string CsrfEndpoint = "authorizationhub-api/antiforgery/token";
+    private const string CsrfEndpoint = "/antiforgery/token";
 
     /// <summary>
     /// Fetches a CSRF token and adds it to the client's default headers.
     /// All subsequent requests will include the token automatically.
+    /// Throws if the token endpoint is missing or returns no token, so a misconfigured
+    /// CSRF setup fails loudly instead of leaving requests silently unprotected.
     /// </summary>
     public static async Task<HttpClient> WithCsrfTokenAsync(this HttpClient client)
     {
         var response = await client.GetAsync(CsrfEndpoint);
+        response.EnsureSuccessStatusCode();
 
-        if (response.IsSuccessStatusCode)
-        {
-            var content = await response.Content.ReadAsStringAsync();
-            var tokenResponse = System.Text.Json.JsonSerializer.Deserialize<AntiforgeryTokenResponse>(content,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        var content = await response.Content.ReadAsStringAsync();
+        var tokenResponse = System.Text.Json.JsonSerializer.Deserialize<AntiforgeryTokenResponse>(content,
+            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-            if (!string.IsNullOrEmpty(tokenResponse?.Token))
-            {
-                // Use the header name from the server response, fall back to default if not provided
-                var headerName = !string.IsNullOrEmpty(tokenResponse.HeaderName)
-                    ? tokenResponse.HeaderName
-                    : CsrfHeaderName;
+        if (string.IsNullOrEmpty(tokenResponse?.Token))
+            throw new InvalidOperationException($"Antiforgery endpoint '{CsrfEndpoint}' returned no token.");
 
-                client.DefaultRequestHeaders.Remove(headerName);
-                client.DefaultRequestHeaders.Add(headerName, tokenResponse.Token);
-            }
-        }
+        // Use the header name from the server response, fall back to default if not provided
+        var headerName = !string.IsNullOrEmpty(tokenResponse.HeaderName)
+            ? tokenResponse.HeaderName
+            : CsrfHeaderName;
+
+        client.DefaultRequestHeaders.Remove(headerName);
+        client.DefaultRequestHeaders.Add(headerName, tokenResponse.Token);
 
         return client;
     }
