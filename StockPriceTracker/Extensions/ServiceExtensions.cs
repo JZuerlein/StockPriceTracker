@@ -10,22 +10,30 @@ public static class ServiceExtensions
 {
     public static IServiceCollection AddSqlite(this IServiceCollection services, Action<SqliteDbContextOptionsBuilder>? configureSqliteOptions = null)
     {
-        var configuration = services.BuildServiceProvider().GetRequiredService<IConfiguration>();
-        var connectionString = configuration.GetConnectionString("DefaultConnection") ?? "Data Source=stocks.db";
+        // Resolve configuration from the real container when the options are built, rather than
+        // building a throwaway provider here (ASP0000). This runs lazily on first DbContext use.
+        services.AddDbContext<AppDbContext>((serviceProvider, options) =>
+        {
+            var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+            var connectionString = configuration.GetConnectionString("DefaultConnection") ?? "Data Source=stocks.db";
+            options.UseSqlite(connectionString, configureSqliteOptions);
+        });
 
-        services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
-        
         return services;
     }
 
     public static IServiceCollection AddPostgreSql(this IServiceCollection services,
         Action<NpgsqlDbContextOptionsBuilder>? configureNpgsqlOptions = null)
     {
-        var configuration = services.BuildServiceProvider().GetRequiredService<IConfiguration>();
-        var connectionString = configuration.GetConnectionString("DefaultConnection");
+        // Resolve configuration from the real container when the options are built, rather than
+        // building a throwaway provider here (ASP0000). This runs lazily on first DbContext use.
+        services.AddDbContext<AppDbContext>((serviceProvider, options) =>
+        {
+            var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+            var connectionString = configuration.GetConnectionString("DefaultConnection");
+            options.UseNpgsql(connectionString, configureNpgsqlOptions);
+        });
 
-        services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
-        
         return services;
     }
 
@@ -63,7 +71,7 @@ public static class ServiceExtensions
             });
 
         services.AddAuthorization();
-        services.AddAntiforgery();
+        services.AddAntiforgery(options => options.HeaderName = "X-XSRF-TOKEN");
         services.AddSingleton(new TokenService(jwtKey, jwtIssuer));
         services.AddSingleton(TimeProvider.System);
 

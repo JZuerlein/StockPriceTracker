@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Hosting;
+﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
@@ -21,9 +22,14 @@ public abstract class WebAppFixtureBase : IAsyncLifetime
     protected virtual Dictionary<string, string?> GetAdditionalInMemorySettings() => new();
 
     protected abstract string GetConnectionString();
-    
-    protected abstract string ConnectionStringConfigKey { get; }
-    
+
+    /// <summary>
+    /// Configuration key the connection string is written to. Both providers read from the
+    /// standard "ConnectionStrings:DefaultConnection" key, so it defaults here; override only
+    /// if a fixture wires its provider to a different key.
+    /// </summary>
+    protected virtual string ConnectionStringConfigKey => "ConnectionStrings:DefaultConnection";
+
     protected abstract void ConfigureDatabaseServices(IServiceCollection services);
 
     protected abstract Task StartDatabaseAsync();
@@ -79,9 +85,11 @@ public abstract class WebAppFixtureBase : IAsyncLifetime
 
                 builder.ConfigureAppConfiguration(config =>
                 {
+                    // In-memory settings are added last so they win: the per-fixture connection
+                    // string must not be silently overridden by a value in appsettings.Testing.json.
                     Configuration = new ConfigurationBuilder()
-                        .AddInMemoryCollection(inMemorySettings!)
                         .AddJsonFile("appsettings.Testing.json", optional: true, reloadOnChange: true)
+                        .AddInMemoryCollection(inMemorySettings!)
                         .Build();
 
                     config.AddConfiguration(Configuration);
@@ -91,6 +99,13 @@ public abstract class WebAppFixtureBase : IAsyncLifetime
                 {
                     ConfigureDatabaseServices(services);
                     services.AddAuthorization();
+
+                    // Default scheme for requests with no test identity, so anonymous requests to
+                    // protected endpoints get a clean 401 rather than throwing for lack of a
+                    // challenge scheme. Clients that supply an identity replace this default via
+                    // AuthenticatedClientBuilder.
+                    services.AddAuthentication(NoOpAuthHandler.SchemeName)
+                        .AddScheme<AuthenticationSchemeOptions, NoOpAuthHandler>(NoOpAuthHandler.SchemeName, _ => { });
 
                     // Replace TimeProvider
                     var existingProvider = services.FirstOrDefault(d => d.ServiceType == typeof(TimeProvider));

@@ -12,7 +12,7 @@ builder.Services.AddIdentityCore<IdentityUser>()
     .AddEntityFrameworkStores<AppDbContext>();
 builder.Services.AddAuthentication();
 builder.Services.AddAuthorization();
-builder.Services.AddAntiforgery();
+builder.Services.AddAntiforgery(options => options.HeaderName = "X-XSRF-TOKEN");
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton(new TokenService("integration-test-jwt-secret-key-min-32-chars!!", "StockPriceTracker"));
 

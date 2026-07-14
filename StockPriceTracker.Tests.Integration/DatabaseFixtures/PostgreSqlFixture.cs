@@ -14,8 +14,6 @@ public class PostgreSqlFixture : WebAppFixtureBase
 
     private readonly string _databaseName = $"StockPriceTracker_{Guid.NewGuid():N}";
 
-    protected override string ConnectionStringConfigKey => "ConnectionStrings:DefaultConnection";
-
     protected override string GetConnectionString()
     {
         var builder = new NpgsqlConnectionStringBuilder(SharedContainer.GetConnectionString())
