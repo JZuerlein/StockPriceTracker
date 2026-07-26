@@ -1,3 +1,12 @@
+<p align="center">
+  <sub><b>Sponsored by</b></sub><br/>
+  <a href="https://authorizationhub.com">
+    <img src="docs/images/authorizationhub-logo.png" alt="AuthorizationHub" width="100%"/>
+  </a>
+</p>
+
+---
+
 # StockPriceTracker
 
 A small ASP.NET Core (.NET 10) minimal-API demo that tracks stock prices behind
@@ -170,3 +179,26 @@ Assert.Equal(request.Ticker, created!.Ticker);
 ```
 
 That same test just ran against real PostgreSQL and against SQLite.
+
+---
+
+<p align="center">
+  <a href="https://authorizationhub.com">
+    <img src="docs/images/authorizationhub-keepyourlogins.png" alt="AuthorizationHub for ASP.NET Core — keep your logins, fix your permissions" width="420"/>
+  </a>
+</p>
+
+## Authorization Management Plug-In Built For ASP.NET Core
+
+**Turn Organizational Trees Into Claims.**
+
+Most authorization rules are about groups, job roles, and people. It's been done before,
+why build it again?
+
+The power of [AuthorizationHub](https://authorizationhub.com) is that the tenants, groups,
+and roles a user is related to, become identity claims as the user's request gets processed
+inside the ASP.NET Core pipeline. Those claims are specific to your application and can be
+used in Authorization Policies. This neatly aligns with the security model in ASP.NET Core.
+It means you can change who can perform operations in your application by changing the
+user's role and group memberships. There's no need to make code changes and redeploy web
+applications.
