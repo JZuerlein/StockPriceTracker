@@ -188,6 +188,11 @@ Assert.Equal(request.Ticker, created!.Ticker);
 
 That same test just ran against real PostgreSQL and against SQLite.
 
+## License
+
+Released under the [MIT License](LICENSE) — copy these testing patterns into your own
+projects freely.
+
 ---
 
 <p align="center">
