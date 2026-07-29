@@ -16,7 +16,13 @@ are written deliberately, as a reusable model for testing minimal-API applicatio
 against real infrastructure. If you're here to learn one thing, read
 [`StockPriceTracker.Tests.Integration`](StockPriceTracker.Tests.Integration).
 
-> 📺 **Prefer video?** [Watch the walkthrough of these integration tests on YouTube](https://youtu.be/DXlmLrkP90E)
+<p align="center">
+  <a href="https://youtu.be/DXlmLrkP90E">
+    <img src="docs/images/social-preview.png" alt="Watch on YouTube: Stop Inheriting Chaos — A Better Way to Write Integration Tests (Part 1)" width="640"/>
+  </a>
+  <br/>
+  <sub>📺 <a href="https://youtu.be/DXlmLrkP90E"><b>Stop Inheriting Chaos</b> — A Better Way to Write Integration Tests (Part 1)</a></sub>
+</p>
 
 ## What the app does
 
@@ -181,6 +187,11 @@ Assert.Equal(request.Ticker, created!.Ticker);
 ```
 
 That same test just ran against real PostgreSQL and against SQLite.
+
+## License
+
+Released under the [MIT License](LICENSE) — copy these testing patterns into your own
+projects freely.
 
 ---
 
