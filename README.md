@@ -16,6 +16,8 @@ are written deliberately, as a reusable model for testing minimal-API applicatio
 against real infrastructure. If you're here to learn one thing, read
 [`StockPriceTracker.Tests.Integration`](StockPriceTracker.Tests.Integration).
 
+> 📺 **Prefer video?** [Watch the walkthrough of these integration tests on YouTube](https://youtu.be/DXlmLrkP90E)
+
 ## What the app does
 
 A minimal API with JWT and cookie authentication over ASP.NET Core Identity:
