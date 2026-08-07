@@ -22,7 +22,7 @@ public abstract class WebAppTestBase<TFixture>
     /// <summary>
     /// Gets the underlying WebApplicationFactory for advanced scenarios.
     /// </summary>
-    protected WebApplicationFactory<Program> Factory => Fixture.Factory;
+    protected WebApplicationFactory<TestProgram> Factory => Fixture.Factory;
 
     /// <summary>
     /// Gets the test configuration.

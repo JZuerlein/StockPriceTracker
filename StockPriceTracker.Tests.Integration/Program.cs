@@ -1,28 +1,38 @@
-﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 
-var builder = WebApplication.CreateBuilder(args);
+namespace StockPriceTracker.Tests.Integration;
 
-// Minimal service registration for integration tests.
-// JWT bearer auth is intentionally omitted — the test infrastructure
-// replaces authentication entirely via ConfigurableTestAuthHandler.
-builder.Services.AddIdentityCore<IdentityUser>()
-    .AddRoles<IdentityRole>()
-    .AddEntityFrameworkStores<AppDbContext>();
-builder.Services.AddAuthentication();
-builder.Services.AddAuthorization();
-builder.Services.AddAntiforgery(options => options.HeaderName = "X-XSRF-TOKEN");
-builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddSingleton(new TokenService("integration-test-jwt-secret-key-min-32-chars!!", "StockPriceTracker"));
+// Named TestProgram (not Program) so it cannot collide with the app assembly's
+// top-level-statement Program class.
+public class TestProgram
+{
+    public static void Main(string[] args)
+    {
+        var builder = WebApplication.CreateBuilder(args);
 
-var app = builder.Build();
+        // Minimal service registration for integration tests.
+        // JWT bearer auth is intentionally omitted — the test infrastructure
+        // replaces authentication entirely via ConfigurableTestAuthHandler.
+        builder.Services.AddIdentityCore<IdentityUser>()
+            .AddRoles<IdentityRole>()
+            .AddEntityFrameworkStores<AppDbContext>();
+        builder.Services.AddAuthentication();
+        builder.Services.AddAuthorization();
+        builder.Services.AddAntiforgery(options => options.HeaderName = "X-XSRF-TOKEN");
+        builder.Services.AddSingleton(TimeProvider.System);
+        builder.Services.AddSingleton(new TokenService("integration-test-jwt-secret-key-min-32-chars!!", "StockPriceTracker"));
 
-app.UseAuthentication();
-app.UseAuthorization();
-app.UseAntiforgery();
+        var app = builder.Build();
 
-app.MapAuthEndpoints();
-app.MapStockEndpoints();
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.UseAntiforgery();
 
-app.Run();
+        app.MapAuthEndpoints();
+        app.MapStockEndpoints();
+
+        app.Run();
+    }
+}
