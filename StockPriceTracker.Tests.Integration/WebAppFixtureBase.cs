@@ -12,8 +12,8 @@ namespace StockPriceTracker.Tests.Integration;
 
 public abstract class WebAppFixtureBase : IAsyncLifetime
 {
-    private WebApplicationFactory<Program> _factory;
-    public IConfiguration Configuration { get; private set; }
+    private WebApplicationFactory<TestProgram>? _factory;
+    public IConfiguration Configuration { get; private set; } = null!;
     
     
     public Stock[] Stocks { get; set; } = Array.Empty<Stock>();
@@ -72,7 +72,7 @@ public abstract class WebAppFixtureBase : IAsyncLifetime
 
     private void BuildFactory()
     {
-        _factory = new WebApplicationFactory<Program>()
+        _factory = new WebApplicationFactory<TestProgram>()
             .WithWebHostBuilder(builder =>
             {
                 var inMemorySettings = new Dictionary<string, string?>
@@ -128,7 +128,7 @@ public abstract class WebAppFixtureBase : IAsyncLifetime
     /// leaving it to whichever test first calls CreateClient(). Building the host does not open
     /// a database connection; that happens during seeding.
     /// </summary>
-    private IServiceProvider MaterializeHost() => _factory.Services;
+    private IServiceProvider MaterializeHost() => _factory!.Services;
 
     private async Task SeedAsync(IServiceProvider host)
     {
@@ -167,7 +167,7 @@ public abstract class WebAppFixtureBase : IAsyncLifetime
     /// <summary>
     /// Gets the underlying WebApplicationFactory for advanced scenarios.
     /// </summary>
-    public WebApplicationFactory<Program> Factory
+    public WebApplicationFactory<TestProgram> Factory
     {
         get
         {

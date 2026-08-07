@@ -9,7 +9,7 @@ namespace StockPriceTracker.Tests.Integration.DatabaseFixtures;
 /// </summary>
 public class PostgreSqlFixture : WebAppFixtureBase
 {
-    private static readonly PostgreSqlContainer SharedContainer = new PostgreSqlBuilder().Build();
+    private static readonly PostgreSqlContainer SharedContainer = new PostgreSqlBuilder("postgres:15.1").Build();
     private static readonly Lazy<Task> ContainerStart = new(() => SharedContainer.StartAsync());
 
     private readonly string _databaseName = $"StockPriceTracker_{Guid.NewGuid():N}";

@@ -16,11 +16,11 @@ namespace StockPriceTracker.Tests.Integration.AuthenticationHandlers;
 /// </summary>
 public class AuthenticatedClientBuilder
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly WebApplicationFactory<TestProgram> _factory;
     private AuthScheme _authScheme = AuthScheme.None;
     private readonly ClaimsBuilder _claimsBuilder = new();
 
-    internal AuthenticatedClientBuilder(WebApplicationFactory<Program> factory)
+    internal AuthenticatedClientBuilder(WebApplicationFactory<TestProgram> factory)
     {
         _factory = factory;
     }
@@ -70,8 +70,8 @@ public class AuthenticatedClientBuilder
         return factory.CreateClient(options);
     }
 
-    private static WebApplicationFactory<Program> ConfigureAuthentication(
-        WebApplicationFactory<Program> factory,
+    private static WebApplicationFactory<TestProgram> ConfigureAuthentication(
+        WebApplicationFactory<TestProgram> factory,
         AuthScheme scheme,
         Claim[] claims)
     {

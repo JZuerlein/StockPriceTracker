@@ -1,10 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <!-- This project supplies its own Program.cs test host entry point -->
+    <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,6 +18,7 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
     <!-- Force upgrade of vulnerable transitive dependency -->
     <PackageReference Include="Microsoft.OpenApi" Version="2.10.0" />
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.12" />
   </ItemGroup>
 
   <ItemGroup>
