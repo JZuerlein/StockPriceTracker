@@ -4,6 +4,15 @@
     <IsPackable>false</IsPackable>
     <!-- This project supplies its own Program.cs test host entry point -->
     <GenerateProgramFile>false</GenerateProgramFile>
+    <!--
+      Use Workstation GC in the test host. ASP.NET Core defaults to Server GC, which allocates one
+      heap per core; on a many-core CI runner every in-process host runs with dozens of greedy heaps
+      that only collect under pressure, so peak memory scales with core count and a suite can pass
+      locally yet OOM the runner. Workstation, non-concurrent GC keeps in-process integration hosts
+      lean. Verify it landed in bin/.../*.runtimeconfig.json ("System.GC.Server": false).
+    -->
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,8 +31,9 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <!-- Force upgrade of vulnerable transitive dependency -->
-    <PackageReference Include="Microsoft.OpenApi" Version="3.9.0" />
+    <!-- Kept in step with the app project: patched (2.7.5+) but on the 2.x line the
+         AspNetCore.OpenApi 10.0.10 source generator can compile against. See app csproj. -->
+    <PackageReference Include="Microsoft.OpenApi" Version="2.8.0" />
     <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.53.3" />
   </ItemGroup>
 

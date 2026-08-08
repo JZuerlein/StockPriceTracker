@@ -10,8 +10,13 @@
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.10" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
-        <!-- Force upgrade of vulnerable transitive dependency -->
-        <PackageReference Include="Microsoft.OpenApi" Version="3.9.0" />
+        <!--
+          Pin Microsoft.OpenApi above the vulnerable transitive 2.0.0 (GHSA-v5pm-xwqc-g5wc,
+          patched in 2.7.5+). Must stay on the 2.x line: Microsoft.AspNetCore.OpenApi 10.0.10's
+          XML-comment source generator assigns IOpenApiMediaType.Example, which is read-only in
+          3.x, so 3.x fails to compile (CS0200).
+        -->
+        <PackageReference Include="Microsoft.OpenApi" Version="2.8.0" />
         <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.53.3" />
     </ItemGroup>
 

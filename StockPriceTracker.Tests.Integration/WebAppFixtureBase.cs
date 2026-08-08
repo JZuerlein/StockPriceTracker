@@ -1,4 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -100,12 +102,26 @@ public abstract class WebAppFixtureBase : IAsyncLifetime
                     ConfigureDatabaseServices(services);
                     services.AddAuthorization();
 
-                    // Default scheme for requests with no test identity, so anonymous requests to
-                    // protected endpoints get a clean 401 rather than throwing for lack of a
-                    // challenge scheme. Clients that supply an identity replace this default via
-                    // AuthenticatedClientBuilder.
-                    services.AddAuthentication(NoOpAuthHandler.SchemeName)
-                        .AddScheme<AuthenticationSchemeOptions, NoOpAuthHandler>(NoOpAuthHandler.SchemeName, _ => { });
+                    // Authentication is configured ONCE here, for the whole host — never per test
+                    // and never per client. The identity is not baked into the container; it rides
+                    // on each request's X-Test-Auth header and is read by the stateless
+                    // TestAuthHandler. That is what lets a single WebApplicationFactory serve every
+                    // test's identity instead of booting a fresh host per identity.
+                    //
+                    // A policy scheme is the default. Its forward selector picks the REAL scheme per
+                    // request from the header (Cookie or Bearer), so scheme-name lookups stay
+                    // faithful — [Authorize(AuthenticationSchemes = "Bearer")], the antiforgery
+                    // filter's cookie-scheme check, etc. Requests with no header forward to the
+                    // no-op scheme, which yields a clean 401 on challenge for anonymous callers.
+                    services.AddAuthentication(TestAuthSchemes.Selector)
+                        .AddPolicyScheme(TestAuthSchemes.Selector, TestAuthSchemes.Selector, options =>
+                        {
+                            options.ForwardDefaultSelector = context =>
+                                TestAuthPayload.ReadScheme(context.Request) ?? NoOpAuthHandler.SchemeName;
+                        })
+                        .AddScheme<AuthenticationSchemeOptions, NoOpAuthHandler>(NoOpAuthHandler.SchemeName, _ => { })
+                        .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(CookieAuthenticationDefaults.AuthenticationScheme, _ => { })
+                        .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(JwtBearerDefaults.AuthenticationScheme, _ => { });
 
                     // Replace TimeProvider
                     var existingProvider = services.FirstOrDefault(d => d.ServiceType == typeof(TimeProvider));
