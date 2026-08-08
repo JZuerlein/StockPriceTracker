@@ -116,8 +116,8 @@ throwaway per-fixture `.sqlite` file, so the two providers are interchangeable.
 
 ### 3. A fluent authenticated-client builder (JWT *and* cookie auth)
 
-Tests never juggle real passwords or tokens. A test auth handler is swapped into the
-DI container and emits whatever claims you ask for, behind a fluent builder:
+Tests never juggle real passwords or tokens. A single stateless test auth handler is
+registered once per host and emits whatever claims you ask for, behind a fluent builder:
 
 ```csharp
 var client = CreateClient()
@@ -125,10 +125,20 @@ var client = CreateClient()
     .Build();
 ```
 
-- `WithJwtAuth` / `WithCookieAuth` select the scheme and replace the real handler with
-  `ConfigurableTestAuthHandler`.
-- `ClaimsBuilder` (`AsAdmin()`, `AsUser(id)`, `WithRole(...)`, `WithClaim(...)`) makes the
-  identity under test explicit and readable.
+- Authentication is configured **once per `WebApplicationFactory`**, never per test or per
+  client. `Build()` reuses the fixture's single host and encodes the identity onto an
+  `X-Test-Auth` request header — so a suite of N tests runs against one in-memory server, not
+  N. (Creating a factory per test is the most expensive mistake in ASP.NET Core integration
+  testing: each `WithWebHostBuilder(...)` boots a full app, and the parent factory retains
+  every derived one.)
+- `WithJwtAuth` / `WithCookieAuth` pick which **real** scheme the request declares. A policy
+  scheme (`AddPolicyScheme`) forwards each request to the real registered scheme by name
+  (`Bearer` / `Cookies`), so only credential validation is swapped —
+  `[Authorize(AuthenticationSchemes = ...)]` and the antiforgery cookie-scheme check stay
+  faithful. Requests with no identity forward to a no-op scheme that answers a clean `401`.
+- The `TestAuthHandler` is **stateless**: it reads the identity from the request every time,
+  so nothing leaks between tests that share the host. `ClaimsBuilder` (`AsAdmin()`,
+  `AsUser(id)`, `WithRole(...)`, `WithClaim(...)`) makes the identity under test explicit.
 - Because the handler injects claims directly, you test **authorization** (roles, policies)
   without standing up a login flow.
 

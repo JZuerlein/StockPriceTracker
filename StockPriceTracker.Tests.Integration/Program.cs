@@ -13,8 +13,9 @@ public class TestProgram
         var builder = WebApplication.CreateBuilder(args);
 
         // Minimal service registration for integration tests.
-        // JWT bearer auth is intentionally omitted — the test infrastructure
-        // replaces authentication entirely via ConfigurableTestAuthHandler.
+        // JWT bearer auth is intentionally omitted — the test infrastructure replaces
+        // authentication entirely via the stateless TestAuthHandler, registered once per host in
+        // WebAppFixtureBase and selected per request by the X-Test-Auth header.
         builder.Services.AddIdentityCore<IdentityUser>()
             .AddRoles<IdentityRole>()
             .AddEntityFrameworkStores<AppDbContext>();
