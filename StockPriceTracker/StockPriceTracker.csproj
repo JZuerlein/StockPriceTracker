@@ -16,7 +16,7 @@
           XML-comment source generator assigns IOpenApiMediaType.Example, which is read-only in
           3.x, so 3.x fails to compile (CS0200).
         -->
-        <PackageReference Include="Microsoft.OpenApi" Version="2.8.0" />
+        <PackageReference Include="Microsoft.OpenApi" Version="2.11.0" />
         <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.53.3" />
     </ItemGroup>
 

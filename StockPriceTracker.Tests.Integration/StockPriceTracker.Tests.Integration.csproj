@@ -33,7 +33,7 @@
     </PackageReference>
     <!-- Kept in step with the app project: patched (2.7.5+) but on the 2.x line the
          AspNetCore.OpenApi 10.0.10 source generator can compile against. See app csproj. -->
-    <PackageReference Include="Microsoft.OpenApi" Version="2.8.0" />
+    <PackageReference Include="Microsoft.OpenApi" Version="2.11.0" />
     <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.53.3" />
   </ItemGroup>
 
