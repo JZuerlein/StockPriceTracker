@@ -16,13 +16,36 @@ are written deliberately, as a reusable model for testing minimal-API applicatio
 against real infrastructure. If you're here to learn one thing, read
 [`StockPriceTracker.Tests.Integration`](StockPriceTracker.Tests.Integration).
 
+<br/>
+
+> ⭐ **If these techniques are useful to you, consider starring the repo** — it helps other
+> developers find it, and it tells me if I should continue building on it.
+
+<br/>
+
 <p align="center">
-  <a href="https://youtu.be/DXlmLrkP90E">
-    <img src="docs/images/social-preview.png" alt="Watch on YouTube: Stop Inheriting Chaos — A Better Way to Write Integration Tests (Part 1)" width="640"/>
-  </a>
-  <br/>
-  <sub>📺 <a href="https://youtu.be/DXlmLrkP90E"><b>Stop Inheriting Chaos</b> — A Better Way to Write Integration Tests (Part 1)</a></sub>
+  <img src="docs/images/youtube.svg" alt="YouTube" height="16" align="absmiddle"/>
+  <sub><b>A Better Way to Write Integration Tests</b></sub>
 </p>
+
+<table align="center" width="100%">
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <a href="https://youtu.be/DXlmLrkP90E">
+        <img src="docs/images/social-preview.png" alt="Watch on YouTube: Stop Inheriting Chaos — A Better Way to Write Integration Tests (Part 1)" width="100%"/>
+      </a>
+      <br/>
+      <sub><a href="https://youtu.be/DXlmLrkP90E"><b>Part 1</b> — Stop Inheriting Chaos</a></sub>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <a href="https://youtu.be/xrb6DX0He70">
+        <img src="docs/images/social-preview-part2.png" alt="Watch on YouTube: Is Your Authorization Really Protecting Anything? — A Better Way to Write Integration Tests (Part 2)" width="100%"/>
+      </a>
+      <br/>
+      <sub><a href="https://youtu.be/xrb6DX0He70"><b>Part 2</b> — Is Your Authorization Really Protecting Anything?</a></sub>
+    </td>
+  </tr>
+</table>
 
 ## What the app does
 
