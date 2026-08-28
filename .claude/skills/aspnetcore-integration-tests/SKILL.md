@@ -57,7 +57,10 @@ point inside the test project that composes only what the tests need (see
 the app assembly's generated `Program` class. Use this when the real `Program.cs` does work
 you do not want in tests: external auth handshakes, background services, migrations on start.
 
-Decide between the two before writing fixtures — everything downstream is generic over it.
+Decide between the two before writing fixtures — everything downstream is generic over it, and
+the choice also decides `GenerateProgramFile` in step 2. Whichever you pick, the type you name
+here is the `T` in `WebApplicationFactory<T>` throughout: the templates say `TestProgram`, so
+replace it with `Program` if you took the first route.
 
 ### 2. Create the test project
 
@@ -67,8 +70,13 @@ project. Package versions there track .NET 10; bump them to match your app. Then
 - Point the `<ProjectReference>` at your app's `.csproj` — the template ships a `..\YourApp\`
   placeholder path.
 - **Add the project to your solution**, or your IDE and a bare `dotnet test` at the repo root
-  will never see it: `dotnet sln add StockPriceTracker.Tests.Integration` (for a `.slnx`, add
-  a `<Project Path="..." />` line).
+  will never see it: `dotnet sln add YourApp.Tests.Integration` (for a `.slnx`, add a
+  `<Project Path="..." />` line).
+- **Create `appsettings.Testing.json` before your first build.** The csproj has a
+  `<Content Include="appsettings.Testing.json">` item, and MSBuild fails the build outright
+  if the file is missing (`MSB3030`) — before it ever reaches your code. Put in whatever
+  config the host requires at startup (JWT signing key, seed credentials); it is copied to the
+  output directory so a bare `dotnet test` works with no user secrets and no environment setup.
 
 Three settings matter beyond the obvious packages:
 
@@ -76,8 +84,11 @@ Three settings matter beyond the obvious packages:
   **delete them if your repo already supplies them from `Directory.Build.props`**. Get this
   backwards in either direction and the project either fails to build or silently disagrees
   with the app about its framework.
-- `<GenerateProgramFile>false</GenerateProgramFile>` — required when the test project
-  supplies its own `TestProgram.Main`.
+- `<GenerateProgramFile>false</GenerateProgramFile>` — **this one depends on your step 1
+  choice.** Keep it only if the test project supplies its own `TestProgram.Main`. If you went
+  the `public partial class Program { }` route instead, **delete it**: the test SDK's
+  generated entry point is then the only one you have, and suppressing it fails the build with
+  `CS5001: Program does not contain a static 'Main' method`.
 - `<ServerGarbageCollection>false</ServerGarbageCollection>` and
   `<ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>` — ASP.NET Core defaults
   to Server GC, one heap per core. On a many-core CI runner, in-process hosts get dozens of

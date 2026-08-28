@@ -51,6 +51,20 @@ authenticated-but-wrong-role case and assert **403**, distinct from 401.
 
 ## Symptom → cause → fix
 
+### `CS5001: Program does not contain a static 'Main' method suitable for an entry point`
+
+`<GenerateProgramFile>false</GenerateProgramFile>` suppresses the test SDK's generated entry
+point, but the project supplies no `TestProgram.Main` of its own — you took the
+`public partial class Program { }` route in step 1 and still copied the csproj setting. Either
+delete that property or add a `TestProgram` (`templates/TestProgram.cs`). The two step 1
+options are mutually exclusive; picking one and configuring for the other fails here.
+
+### `MSB3030: Could not copy the file ... appsettings.Testing.json because it was not found`
+
+The csproj declares that file as `<Content>`, so MSBuild fails before compiling anything.
+Create `appsettings.Testing.json` in the test project root — this is a missing file, not a
+broken build configuration.
+
 ### `NETSDK1013` / "The TargetFramework value '' was not recognized" / nullable and implicit-using errors everywhere
 
 The csproj template omits `TargetFramework`, `Nullable` and `ImplicitUsings` when your repo

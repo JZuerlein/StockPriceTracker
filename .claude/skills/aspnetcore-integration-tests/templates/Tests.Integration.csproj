@@ -3,16 +3,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!--
-      Delete these three if your repo already sets them in Directory.Build.props; keep them
-      otherwise, or the project will not build. Match the app's target framework.
-    -->
+    <!-- Delete the next 3 lines if Directory.Build.props already sets them; else match the app. -->
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
 
     <IsPackable>false</IsPackable>
-    <!-- This project supplies its own TestProgram.cs test host entry point -->
+    <!-- Keep ONLY if this project supplies its own TestProgram.cs entry point. Delete this line
+         if the app exposes `public partial class Program { }` instead, or you get CS5001. -->
     <GenerateProgramFile>false</GenerateProgramFile>
     <!--
       Use Workstation GC in the test host. ASP.NET Core defaults to Server GC, which allocates one
