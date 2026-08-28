@@ -16,6 +16,10 @@ are written deliberately, as a reusable model for testing minimal-API applicatio
 against real infrastructure. If you're here to learn one thing, read
 [`StockPriceTracker.Tests.Integration`](StockPriceTracker.Tests.Integration).
 
+**Want these patterns in your own project?** The repo ships them as a reusable Claude Code
+skill — [`.claude/skills/aspnetcore-integration-tests`](.claude/skills/aspnetcore-integration-tests).
+See [Reusable Claude Code skill](#reusable-claude-code-skill) below.
+
 <br/>
 
 > ⭐ **If these techniques are useful to you, consider starring the repo** — it helps other
@@ -74,6 +78,9 @@ StockPriceTracker/                     The application
   Services/TokenService.cs             JWT creation
 
 StockPriceTracker.Tests.Integration/   The main event (see below)
+
+.claude/skills/
+  aspnetcore-integration-tests/        The same patterns, packaged as a reusable skill
 ```
 
 ## Running it
@@ -220,6 +227,56 @@ Assert.Equal(request.Ticker, created!.Ticker);
 ```
 
 That same test just ran against real PostgreSQL and against SQLite.
+
+## Reusable Claude Code skill
+
+Everything above is also packaged as a **[Claude Code](https://claude.com/claude-code) skill**
+so you can apply these patterns to your own ASP.NET Core project without copying files by hand:
+
+```
+.claude/skills/aspnetcore-integration-tests/
+  SKILL.md                             The workflow: setup steps, conventions, coverage checklist
+  references/authorization.md          Asserting roles, policies and claims; how the test auth stack works
+  references/troubleshooting.md        Symptom → cause → fix, and the anti-patterns to avoid
+  templates/                           Working, copy-and-adapt source files
+    WebAppFixtureBase.cs               Lifecycle, config, single-host auth registration
+    WebAppTestBase.cs                  Helpers every test needs
+    DatabaseFixtures/                  SqliteFixture + PostgreSqlFixture (Testcontainers)
+    AuthenticationHandlers/            Stateless test auth, claims builder, CSRF extensions
+    ExampleEndpointTests.cs            A complete provider-parameterised test class
+    TestProgram.cs                     A test-owned host entry point
+    Tests.Integration.csproj           Packages + the GC settings that keep CI from OOMing
+    appsettings.Testing.json           Config so `dotnet test` works with no setup
+    integration-tests.yml              GitHub Actions job with a per-provider matrix
+```
+
+### Using it
+
+**In this repo** — it's already active. Ask Claude Code something like
+*"add integration tests for the auth endpoints"* and the skill loads automatically, or invoke
+it by name.
+
+**In your own project** — copy the skill folder across:
+
+```bash
+# from the root of your project
+mkdir -p .claude/skills
+git clone --depth 1 https://github.com/JZuerlein/StockPriceTracker /tmp/spt
+cp -r /tmp/spt/.claude/skills/aspnetcore-integration-tests .claude/skills/
+```
+
+Then ask Claude Code to *"set up integration tests for this project"*. It will work through
+the setup steps — entry point, test project, fixture base, per-provider fixtures, the test
+auth stack, the test base class, CI — adapting the templates to your `DbContext`, entities and
+endpoints.
+
+To make it available to **every** project on your machine, copy it to `~/.claude/skills/`
+instead.
+
+The skill also carries the reasoning, not just the code: why one `WebApplicationFactory` per
+fixture (never per test), why the test auth handler must stay stateless, why a policy scheme
+forwards to the *real* scheme names, and why the 401-vs-403 distinction is the part of an
+authorization suite that actually proves something.
 
 ## License
 

@@ -1,0 +1,52 @@
+# TEMPLATE - aspnetcore-integration-tests skill. Copy to .github/workflows/ and
+# replace YourApp with your project name.
+name: Integration Tests
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  # Integration tests run in their own job (separate from any unit-test job). Sharing a job with
+  # other test runs leaves orphaned dotnet/testhost processes behind that destabilise the
+  # container-backed tests.
+  integration-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30          # a hang fails cleanly instead of dangling until the job limit
+    strategy:
+      fail-fast: false           # every provider reports independently
+      matrix:
+        # Each value is a FullyQualifiedName fragment that selects exactly one provider's classes
+        # (AddStockWith<Provider>Tests, GetStockWith<Provider>Tests). The two fragments partition
+        # the suite exactly: 10 tests each, 20 total, no overlap with any test-method name.
+        provider: [ Sqlite, PostgreSql ]
+
+    env:
+      # Belt-and-braces with the csproj setting: force Workstation GC in the test host so peak
+      # memory does not scale with the runner's core count and OOM the box.
+      DOTNET_gcServer: '0'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore ./YourApp.Tests.Integration/YourApp.Tests.Integration.csproj
+
+      - name: Build
+        run: dotnet build ./YourApp.Tests.Integration/YourApp.Tests.Integration.csproj --configuration Release --no-restore
+
+      # The PostgreSql leg spins up a Testcontainers PostgreSQL container; Docker is available on
+      # ubuntu-latest by default, so no services: block is needed. The Sqlite leg needs no Docker.
+      - name: Test (${{ matrix.provider }})
+        run: >
+          dotnet test ./YourApp.Tests.Integration/YourApp.Tests.Integration.csproj
+          --configuration Release --no-build
+          --filter "FullyQualifiedName~${{ matrix.provider }}"
+          --logger "console;verbosity=normal"

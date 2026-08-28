@@ -44,3 +44,6 @@ coverage/
 ## OS artefacts
 .DS_Store
 Thumbs.db
+
+## Claude Code machine-local settings (the shared skill in .claude/skills is committed)
+.claude/settings.local.json
