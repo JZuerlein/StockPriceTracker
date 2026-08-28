@@ -1,6 +1,5 @@
-// TEMPLATE - aspnetcore-integration-tests skill.
-// Replace: YourApp.Tests.Integration -> your test namespace, AppDbContext -> your DbContext,
-// Stock/StockRequest -> your entities, TestProgram -> your entry point if you use `Program`.
+// TEMPLATE - aspnetcore-integration-tests skill. Retarget the YourApp namespace, and see
+// "Adapting to your project" in SKILL.md for what else is project-specific in this file.
 
 
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -33,6 +32,7 @@ public abstract class WebAppTestBase<TFixture>
     /// </summary>
     protected IConfiguration? Configuration => Fixture.Configuration;
 
+    // PROJECT-SPECIFIC: mirrors the seeded data the fixture exposes. Rename with your entity.
     protected Stock[] Stocks => Fixture.Stocks;
     
     /// <summary>

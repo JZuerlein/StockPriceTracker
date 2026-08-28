@@ -161,6 +161,14 @@ The pieces:
 - `AuthenticatedClientBuilder` + `ClaimsBuilder` — the fluent surface tests actually use.
 - `HttpClientCsrfExtensions` — the antiforgery dance, including the negative case.
 
+Exactly two files in that folder are yours to rewrite; the rest copy over unchanged:
+
+- `ClaimsBuilderExtensions.cs` — your roles, policies and claim types (`AsAdmin()` and friends).
+- `TestCsrfSettings.cs` — your antiforgery route and header name.
+
+Both compile whatever you put in them, so a stale value fails as a confusing test result rather
+than a build error. See "Adapting to your project" below.
+
 ### 6. Add the test base class
 
 Copy `templates/WebAppTestBase.cs`. It is generic over the fixture and forwards the helpers
@@ -177,6 +185,54 @@ Copy `templates/integration-tests.yml` into `.github/workflows/`. Two things it 
   provider reports independently (`fail-fast: false`). This works because the concrete
   subclasses are named `<Thing>With<Provider>Tests` — keep that convention, and make sure the
   provider fragment cannot accidentally match a test *method* name.
+
+## Adapting to your project
+
+The templates are extracted from a working app, so some of them encode *that* app's
+assumptions. Two kinds, and the difference matters more than the list:
+
+**Fails to compile — safe.** You cannot ship these by accident; the build tells you.
+
+| Where | What to change |
+| --- | --- |
+| `WebAppFixtureBase`, `WebAppTestBase` | `AppDbContext` → your context; the `Stock[] Stocks` seed array → your entity; the body of `PopulateDbAsync`. Use `MigrateAsync()` instead of `EnsureCreatedAsync()` if you have migrations — that puts them under test too. |
+| `DatabaseFixtures/*` | `AddSqlite()` / `AddPostgreSql()` are the sample app's own DI extensions. Call whatever registers your `DbContext`. |
+| `TestProgram.cs` | Entirely sample-specific. Compose only the services and endpoints your tests need. |
+| `ExampleEndpointTests.cs` | A worked example, not scaffolding. Delete it once you have real tests. |
+
+**Compiles and runs — dangerous.** These are wrong silently: the request still authenticates,
+the endpoint still answers, and the assertion quietly stops meaning anything. Check them first.
+
+| Where | Why it bites |
+| --- | --- |
+| `ClaimsBuilderExtensions.cs` | `AsAdmin()` hard-codes a role named `administrator`. In an app whose admin role is `Admin`, `SystemAdministrator`, or a policy over a claim, the identity authenticates fine and simply fails the policy — so a "403 for non-admins" test passes for the wrong reason, and the *admin* test fails looking like a product bug. **Rewrite this file first.** |
+| `TestCsrfSettings.cs` | `/antiforgery/token` and `X-XSRF-TOKEN` must match your app. Wrong endpoint 404s; wrong header attaches the token where nothing reads it, and every cookie-authenticated write returns 400 as though the test were broken. |
+| `appsettings.Testing.json` | Supplies `Jwt:Key` and seed credentials for the sample. Replace with whatever *your* host demands at startup. |
+| `PostgreSqlFixture` | The `YourApp_` database-name prefix is cosmetic, but keep it distinctive so a stray container is identifiable. |
+
+Everything else in `AuthenticationHandlers/` — the payload, the two handlers, the scheme
+names, the client builder, the CSRF extension methods — is domain-free and copies between
+projects unchanged. If you find yourself editing `ClaimsBuilder` itself rather than its
+extensions, that is the signal you are pushing project vocabulary into the generic layer.
+
+### Where project vocabulary belongs
+
+Keep `ClaimsBuilder` free of your domain and express identities as extension methods:
+
+```csharp
+public static class ClaimsBuilderExtensions
+{
+    public static ClaimsBuilder AsAdmin(this ClaimsBuilder claims) =>
+        claims.AsUser("Administrator").WithRole("administrator");
+
+    public static ClaimsBuilder AsTenantMember(this ClaimsBuilder claims, string userId, string tenantId) =>
+        claims.AsUser(userId).WithClaim("tenant_id", tenantId);
+}
+```
+
+Tests read the same either way — `CreateClient().WithJwtAuth(c => c.AsAdmin())` — but the
+generic file stays copyable, and one file holds every assumption about what your roles are
+called. A method belongs there if renaming a role or policy in the app should change it.
 
 ## Writing a test
 

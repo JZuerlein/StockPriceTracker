@@ -1,6 +1,5 @@
-// TEMPLATE - aspnetcore-integration-tests skill.
-// Replace: YourApp.Tests.Integration -> your test namespace, AppDbContext -> your DbContext,
-// Stock/StockRequest -> your entities, TestProgram -> your entry point if you use `Program`.
+// TEMPLATE - aspnetcore-integration-tests skill. Retarget the YourApp namespace, and see
+// "Adapting to your project" in SKILL.md for what else is project-specific in this file.
 
 using System.Security.Claims;
 
@@ -9,21 +8,15 @@ namespace YourApp.Tests.Integration.AuthenticationHandlers;
 
 /// <summary>
 /// Builder for configuring authentication claims.
+///
+/// <para>This type is deliberately domain-free: it knows how to attach claims, not what your
+/// application's roles or claim types mean. Put project vocabulary — <c>AsAdmin()</c>,
+/// <c>AsTenantOwner(id)</c>, and so on — in extension methods instead, so this file stays
+/// copyable between projects unchanged. See <c>ClaimsBuilderExtensions.cs</c>.</para>
 /// </summary>
 public class ClaimsBuilder
 {
     private readonly List<Claim> _claims = new();
-
-    /// <summary>
-    /// Configures the identity as an administrator.
-    /// </summary>
-    public ClaimsBuilder AsAdmin()
-    {
-        _claims.Add(new Claim(ClaimTypes.Name, "Administrator"));
-        _claims.Add(new Claim(ClaimTypes.NameIdentifier, "Administrator"));
-        _claims.Add(new Claim(ClaimTypes.Role, "administrator"));
-        return this;
-    }
 
     /// <summary>
     /// Configures the identity as a specific user.
@@ -73,7 +66,9 @@ public class ClaimsBuilder
 
     internal Claim[] Build()
     {
-        // If no claims were added, create a default non-admin user
+        // No claims configured means "some authenticated user, carrying no roles or claims" —
+        // the baseline a `.WithJwtAuth()` with no arguments should get. Anything your policies
+        // actually read must be stated explicitly by the test.
         if (_claims.Count == 0)
         {
             return new[]

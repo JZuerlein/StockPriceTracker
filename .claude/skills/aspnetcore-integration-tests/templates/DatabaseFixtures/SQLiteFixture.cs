@@ -1,6 +1,5 @@
-// TEMPLATE - aspnetcore-integration-tests skill.
-// Replace: YourApp.Tests.Integration -> your test namespace, AppDbContext -> your DbContext,
-// Stock/StockRequest -> your entities, TestProgram -> your entry point if you use `Program`.
+// TEMPLATE - aspnetcore-integration-tests skill. Retarget the YourApp namespace, and see
+// "Adapting to your project" in SKILL.md for what else is project-specific in this file.
 
 using Microsoft.Extensions.DependencyInjection;
 

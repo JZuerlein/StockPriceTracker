@@ -1,6 +1,5 @@
-// TEMPLATE - aspnetcore-integration-tests skill.
-// Replace: YourApp.Tests.Integration -> your test namespace, AppDbContext -> your DbContext,
-// Stock/StockRequest -> your entities, TestProgram -> your entry point if you use `Program`.
+// TEMPLATE - aspnetcore-integration-tests skill. Retarget the YourApp namespace, and see
+// "Adapting to your project" in SKILL.md for what else is project-specific in this file.
 
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -22,6 +21,9 @@ public abstract class WebAppFixtureBase : IAsyncLifetime
     public IConfiguration Configuration { get; private set; } = null!;
     
     
+    // PROJECT-SPECIFIC: the seeded data tests read from. Replace `Stock` with your own entity
+    // (or hold several arrays). Exposing seeded rows as a typed array is what lets tests assert
+    // against known data — `Stocks[0].Ticker` — instead of hardcoding values that drift.
     public Stock[] Stocks { get; set; } = Array.Empty<Stock>();
 
     public TimeProvider TimeProvider { get; init; } = TimeProvider.System;
@@ -166,6 +168,16 @@ public abstract class WebAppFixtureBase : IAsyncLifetime
         await StopDatabaseAsync();
     }
     
+    /// <summary>
+    /// PROJECT-SPECIFIC: everything below the EnsureCreated call is example data. Replace the
+    /// body with your own seeding; keep the shape — create the schema, seed deterministically
+    /// from <see cref="TimeProvider"/> rather than the wall clock, and store what you seeded on
+    /// the fixture so tests can assert against it.
+    ///
+    /// <para>If your app uses EF migrations rather than <c>EnsureCreated</c>, call
+    /// <c>context.Database.MigrateAsync()</c> here instead — that also gets your migrations
+    /// under test on every run.</para>
+    /// </summary>
      protected virtual async Task PopulateDbAsync(AppDbContext context)
     {
         await context.Database.EnsureCreatedAsync();

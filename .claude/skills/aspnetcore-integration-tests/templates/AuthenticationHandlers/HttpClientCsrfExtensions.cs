@@ -1,6 +1,5 @@
-// TEMPLATE - aspnetcore-integration-tests skill.
-// Replace: YourApp.Tests.Integration -> your test namespace, AppDbContext -> your DbContext,
-// Stock/StockRequest -> your entities, TestProgram -> your entry point if you use `Program`.
+// TEMPLATE - aspnetcore-integration-tests skill. Retarget the YourApp namespace, and see
+// "Adapting to your project" in SKILL.md for what else is project-specific in this file.
 
 using System.Net.Http.Json;
 
@@ -11,8 +10,8 @@ namespace YourApp.Tests.Integration.AuthenticationHandlers;
 /// </summary>
 public static class HttpClientCsrfExtensions
 {
-    private const string CsrfHeaderName = "X-XSRF-TOKEN";
-    private const string CsrfEndpoint = "/antiforgery/token";
+    private const string CsrfHeaderName = TestCsrfSettings.HeaderName;
+    private const string CsrfEndpoint = TestCsrfSettings.TokenEndpoint;
 
     /// <summary>
     /// Fetches a CSRF token and adds it to the client's default headers.

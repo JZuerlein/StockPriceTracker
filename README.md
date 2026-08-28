@@ -243,6 +243,8 @@ so you can apply these patterns to your own ASP.NET Core project without copying
     WebAppTestBase.cs                  Helpers every test needs
     DatabaseFixtures/                  SqliteFixture + PostgreSqlFixture (Testcontainers)
     AuthenticationHandlers/            Stateless test auth, claims builder, CSRF extensions
+      ClaimsBuilderExtensions.cs       Your roles and claim types — the file you rewrite first
+      TestCsrfSettings.cs              Your antiforgery route and header name
     ExampleEndpointTests.cs            A complete provider-parameterised test class
     TestProgram.cs                     A test-owned host entry point
     Tests.Integration.csproj           Packages + the GC settings that keep CI from OOMing
@@ -272,6 +274,13 @@ endpoints.
 
 To make it available to **every** project on your machine, copy it to `~/.claude/skills/`
 instead.
+
+The test infrastructure is deliberately domain-free, so it carries across projects unchanged.
+Your application's vocabulary lives in two small files you rewrite — `ClaimsBuilderExtensions.cs`
+(what your roles and claim types are called) and `TestCsrfSettings.cs` (your antiforgery route
+and header). The skill's *Adapting to your project* section separates the changes the compiler
+will catch for you from the ones that quietly make an authorization test pass for the wrong
+reason.
 
 The skill also carries the reasoning, not just the code: why one `WebApplicationFactory` per
 fixture (never per test), why the test auth handler must stay stateless, why a policy scheme

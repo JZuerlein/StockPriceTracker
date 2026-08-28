@@ -90,8 +90,15 @@ Same cause as above.
 
 ### Everything returns 403 regardless of role
 
-The `ClaimsBuilder` role claim type does not match what the policy reads. `AsAdmin()` emits
-`ClaimTypes.Role`; if the app configures a custom `RoleClaimType`, emit that instead.
+Either the role *name* or the role *claim type* disagrees with the app.
+
+- **Name:** `AsAdmin()` in `ClaimsBuilderExtensions.cs` ships with the sample's
+  `administrator`. If your app's role is `Admin` or `SystemAdministrator`, the identity
+  authenticates and then fails the policy — the admin test fails looking like a product bug,
+  while the non-admin test passes for entirely the wrong reason. Rewrite that file to your
+  application's vocabulary before trusting any authorization result.
+- **Claim type:** `WithRole` emits `ClaimTypes.Role`. If the app configures a custom
+  `RoleClaimType`, emit that instead.
 
 ### `[Authorize(AuthenticationSchemes = "Bearer")]` endpoints reject valid test identities
 
