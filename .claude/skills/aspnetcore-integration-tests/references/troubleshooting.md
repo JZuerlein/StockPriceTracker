@@ -51,6 +51,13 @@ authenticated-but-wrong-role case and assert **403**, distinct from 401.
 
 ## Symptom → cause → fix
 
+### `NETSDK1013` / "The TargetFramework value '' was not recognized" / nullable and implicit-using errors everywhere
+
+The csproj template omits `TargetFramework`, `Nullable` and `ImplicitUsings` when your repo
+supplies them from `Directory.Build.props`. If it does not, keep those properties in the
+project file. The reverse also bites: setting a `TargetFramework` that disagrees with the one
+`Directory.Build.props` gives the app.
+
 ### `InvalidOperationException: No authenticationScheme was specified, and there was no DefaultChallengeScheme found`
 
 The default scheme cannot challenge. Register `NoOpAuthHandler` and make sure the policy

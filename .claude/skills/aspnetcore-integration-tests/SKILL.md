@@ -62,10 +62,20 @@ Decide between the two before writing fixtures — everything downstream is gene
 ### 2. Create the test project
 
 Copy `templates/Tests.Integration.csproj` and merge its property/item groups into your test
-project. Package versions there track .NET 10; bump them to match your app.
+project. Package versions there track .NET 10; bump them to match your app. Then:
 
-Two settings matter beyond the obvious packages:
+- Point the `<ProjectReference>` at your app's `.csproj` — the template ships a `..\YourApp\`
+  placeholder path.
+- **Add the project to your solution**, or your IDE and a bare `dotnet test` at the repo root
+  will never see it: `dotnet sln add StockPriceTracker.Tests.Integration` (for a `.slnx`, add
+  a `<Project Path="..." />` line).
 
+Three settings matter beyond the obvious packages:
+
+- `<TargetFramework>` (plus `Nullable` / `ImplicitUsings`) — the template sets these, but
+  **delete them if your repo already supplies them from `Directory.Build.props`**. Get this
+  backwards in either direction and the project either fails to build or silently disagrees
+  with the app about its framework.
 - `<GenerateProgramFile>false</GenerateProgramFile>` — required when the test project
   supplies its own `TestProgram.Main`.
 - `<ServerGarbageCollection>false</ServerGarbageCollection>` and
@@ -201,6 +211,9 @@ See `templates/ExampleEndpointTests.cs` for a complete, copyable file.
 
 ### Conventions
 
+- Put test classes in a folder per endpoint group (`StockEndpointTests/`), one file per
+  endpoint, and keep the infrastructure (fixture base, test base, `DatabaseFixtures/`,
+  `AuthenticationHandlers/`) at the project root.
 - Name tests `Method_Condition_ExpectedResult`, e.g.
   `AddStock_IsForbidden_WhenAuthenticatedButNotAdmin`.
 - Mark sections with `//Arrange` / `//Act` / `//Assert`. Group related tests with `#region`
@@ -225,6 +238,7 @@ Do not stop at the happy path. Each endpoint should answer:
 | Cookie auth with CSRF token | 2xx | `.WithCookieAuth(...)` then `await client.WithCsrfTokenAsync()` |
 | Cookie auth **without** CSRF token | **400** | `.WithCookieAuth(...)`, skip the token |
 | Not-found / validation cases | 404 / 400 | as appropriate |
+| Duplicate / conflicting write | 409 | post a key the fixture already seeded |
 
 The 401-vs-403 distinction is the point: 401 means authentication had no identity to hand
 over; 403 means a *known* identity failed the policy. A suite that only tests "anonymous is

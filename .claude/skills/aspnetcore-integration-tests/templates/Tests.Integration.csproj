@@ -3,6 +3,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <!--
+      Delete these three if your repo already sets them in Directory.Build.props; keep them
+      otherwise, or the project will not build. Match the app's target framework.
+    -->
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
     <IsPackable>false</IsPackable>
     <!-- This project supplies its own TestProgram.cs test host entry point -->
     <GenerateProgramFile>false</GenerateProgramFile>

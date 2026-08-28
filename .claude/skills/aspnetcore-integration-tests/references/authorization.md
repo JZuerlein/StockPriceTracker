@@ -146,14 +146,18 @@ await client.PostWithCsrfAsync(url, body);  // fetch-if-missing, then POST
 ```
 
 `WithCsrfTokenAsync` throws if the token endpoint is missing or returns nothing, so a
-misconfigured setup fails loudly instead of leaving every request silently unprotected. It
-prefers the header name the server reports, falling back to `X-XSRF-TOKEN`.
+misconfigured setup fails loudly instead of leaving every request silently unprotected.
 
 Requirements on the app side:
 
-- An endpoint that issues a token (e.g. `GET /antiforgery/token` returning
-  `{ token, headerName }` from `IAntiforgery.GetAndStoreTokens`).
+- An endpoint that issues a token from `IAntiforgery.GetAndStoreTokens` — e.g.
+  `GET /antiforgery/token` returning `{ token }`.
 - `services.AddAntiforgery(o => o.HeaderName = "X-XSRF-TOKEN")` and `app.UseAntiforgery()`.
+
+`token` is the only field required. If the response *also* carries a `headerName`,
+`WithCsrfTokenAsync` uses it; otherwise it falls back to `X-XSRF-TOKEN`. That fallback must
+match the `HeaderName` your app configures — if you set a different one and do not report it
+from the endpoint, every cookie-auth write will fail with a 400 that looks like a broken test.
 
 Always test **both** directions. A CSRF test that only proves the happy path passes just as
 well when antiforgery is switched off entirely.
