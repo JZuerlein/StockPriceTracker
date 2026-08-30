@@ -18,11 +18,11 @@ namespace YourApp.Tests.Integration.AuthenticationHandlers;
 /// </summary>
 public class AuthenticatedClientBuilder
 {
-    private readonly WebApplicationFactory<TestProgram> _factory;
+    private readonly WebApplicationFactory<TestEntryPoint> _factory;
     private AuthScheme _authScheme = AuthScheme.None;
     private readonly ClaimsBuilder _claimsBuilder = new();
 
-    internal AuthenticatedClientBuilder(WebApplicationFactory<TestProgram> factory)
+    internal AuthenticatedClientBuilder(WebApplicationFactory<TestEntryPoint> factory)
     {
         _factory = factory;
     }

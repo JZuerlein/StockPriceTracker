@@ -1,5 +1,5 @@
-// TEMPLATE - aspnetcore-integration-tests skill. Retarget the YourApp namespace, and see
-// "Adapting to your project" in SKILL.md for what else is project-specific in this file.
+// EXAMPLE - aspnetcore-integration-tests skill. A complete test class from the sample app.
+// Note it derives from StockTestBase (see ExampleFixtureBase.cs), not WebAppTestBase directly.
 
 using System.Net;
 using Xunit.Abstractions;
@@ -9,8 +9,8 @@ using YourApp.Tests.Integration.DatabaseFixtures;
 
 namespace YourApp.Tests.Integration.StockEndpointTests;
 
-public abstract class AddStockTestsBase<TFixture> : WebAppTestBase<TFixture>
-    where TFixture : WebAppFixtureBase
+public abstract class AddStockTestsBase<TFixture> : StockTestBase<TFixture>
+    where TFixture : WebAppFixtureBase, ISeededStocks
 {
     private const string AddStockUrl = "/stocks";
 
@@ -134,16 +134,16 @@ public abstract class AddStockTestsBase<TFixture> : WebAppTestBase<TFixture>
     #endregion
 }
 
-public class AddStockWithSqliteTests : AddStockTestsBase<SqliteFixture>, IClassFixture<SqliteFixture>
+public class AddStockWithSqliteTests : AddStockTestsBase<StocksSqliteFixture>, IClassFixture<StocksSqliteFixture>
 {
-    public AddStockWithSqliteTests(SqliteFixture fixture, ITestOutputHelper outputHelper) : base(fixture, outputHelper)
+    public AddStockWithSqliteTests(StocksSqliteFixture fixture, ITestOutputHelper outputHelper) : base(fixture, outputHelper)
     {
     }
 }
 
-public class AddStockWithPostgreSqlTests : AddStockTestsBase<PostgreSqlFixture>, IClassFixture<PostgreSqlFixture>
+public class AddStockWithPostgreSqlTests : AddStockTestsBase<StocksPostgreSqlFixture>, IClassFixture<StocksPostgreSqlFixture>
 {
-    public AddStockWithPostgreSqlTests(PostgreSqlFixture fixture, ITestOutputHelper outputHelper) : base(fixture, outputHelper)
+    public AddStockWithPostgreSqlTests(StocksPostgreSqlFixture fixture, ITestOutputHelper outputHelper) : base(fixture, outputHelper)
     {
     }
 }

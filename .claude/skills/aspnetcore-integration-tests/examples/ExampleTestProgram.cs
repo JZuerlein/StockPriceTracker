@@ -1,5 +1,5 @@
-// TEMPLATE - aspnetcore-integration-tests skill. Retarget the YourApp namespace, and see
-// "Adapting to your project" in SKILL.md for what else is project-specific in this file.
+// EXAMPLE - aspnetcore-integration-tests skill. The sample app's own test-host entry point,
+// showing the shape described in step 1. Yours will compose different services.
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;

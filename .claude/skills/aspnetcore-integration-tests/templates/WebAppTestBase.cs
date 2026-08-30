@@ -1,6 +1,5 @@
-// TEMPLATE - aspnetcore-integration-tests skill. Retarget the YourApp namespace, and see
-// "Adapting to your project" in SKILL.md for what else is project-specific in this file.
-
+// TEMPLATE - aspnetcore-integration-tests skill. Retarget the YourApp namespace and copy as-is;
+// this file names no application type directly (see TestAliases.cs).
 
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -10,6 +9,13 @@ using Xunit.Abstractions;
 
 namespace YourApp.Tests.Integration;
 
+/// <summary>
+/// Base for test classes. Generic over the fixture so one test body runs against every database
+/// provider; it exposes only what every test needs, regardless of application.
+///
+/// <para>Domain conveniences — the seeded rows a suite asserts against — belong on your own
+/// intermediate base class, not here. See examples/ExampleFixtureBase.cs.</para>
+/// </summary>
 public abstract class WebAppTestBase<TFixture>
     where TFixture : WebAppFixtureBase
 {
@@ -21,20 +27,17 @@ public abstract class WebAppTestBase<TFixture>
         Fixture = fixture;
         Output = output;
     }
-    
+
     /// <summary>
     /// Gets the underlying WebApplicationFactory for advanced scenarios.
     /// </summary>
-    protected WebApplicationFactory<TestProgram> Factory => Fixture.Factory;
+    protected WebApplicationFactory<TestEntryPoint> Factory => Fixture.Factory;
 
     /// <summary>
     /// Gets the test configuration.
     /// </summary>
     protected IConfiguration? Configuration => Fixture.Configuration;
 
-    // PROJECT-SPECIFIC: mirrors the seeded data the fixture exposes. Rename with your entity.
-    protected Stock[] Stocks => Fixture.Stocks;
-    
     /// <summary>
     /// Creates an HTTP client builder for configuring authentication.
     /// Use .WithJwtAuth() or .WithCookieAuth() to configure authentication,
@@ -42,21 +45,21 @@ public abstract class WebAppTestBase<TFixture>
     /// </summary>
     /// <example>
     /// var client = CreateClient()
-    ///     .WithJwtAuth(claims => claims.AsAdmin())
+    ///     .WithJwtAuth(claims => claims.WithRole("administrator"))
     ///     .Build();
     /// </example>
     protected AuthenticatedClientBuilder CreateClient() => Fixture.CreateClient();
-    
+
     /// <summary>
     /// Executes an action against the EF Core context.
     /// </summary>
-    protected Task ExecuteDbContextAsync(Func<AppDbContext, Task> action)
+    protected Task ExecuteDbContextAsync(Func<TestDbContext, Task> action)
         => Fixture.ExecuteDbContextAsync(action);
 
     /// <summary>
     /// Executes an action against the EF Core context and returns a result.
     /// </summary>
-    protected Task<T> ExecuteDbContextAsync<T>(Func<AppDbContext, Task<T>> action)
+    protected Task<T> ExecuteDbContextAsync<T>(Func<TestDbContext, Task<T>> action)
         => Fixture.ExecuteDbContextAsync(action);
 
     /// <summary>
@@ -70,7 +73,7 @@ public abstract class WebAppTestBase<TFixture>
     /// </summary>
     protected IServiceScope CreateScope()
         => Fixture.CreateScope();
-    
+
     /// <summary>
     /// Writes a message to the test output.
     /// </summary>

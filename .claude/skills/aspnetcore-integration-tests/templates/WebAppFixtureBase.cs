@@ -1,5 +1,5 @@
-// TEMPLATE - aspnetcore-integration-tests skill. Retarget the YourApp namespace, and see
-// "Adapting to your project" in SKILL.md for what else is project-specific in this file.
+// TEMPLATE - aspnetcore-integration-tests skill. Retarget the YourApp namespace and copy as-is;
+// this file names no application type directly (see TestAliases.cs).
 
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -11,39 +11,43 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using YourApp.Tests.Integration.AuthenticationHandlers;
-using Xunit.Abstractions;
 
 namespace YourApp.Tests.Integration;
 
+/// <summary>
+/// Owns one host and one database for the lifetime of a test class. Everything here is
+/// application-agnostic: the app's entry point and DbContext arrive as aliases from
+/// TestAliases.cs, and anything domain-shaped is left to <see cref="PopulateDbAsync"/> and to
+/// whatever your own fixture base adds on top.
+/// </summary>
 public abstract class WebAppFixtureBase : IAsyncLifetime
 {
-    private WebApplicationFactory<TestProgram>? _factory;
-    public IConfiguration Configuration { get; private set; } = null!;
-    
-    
-    // PROJECT-SPECIFIC: the seeded data tests read from. Replace `Stock` with your own entity
-    // (or hold several arrays). Exposing seeded rows as a typed array is what lets tests assert
-    // against known data — `Stocks[0].Ticker` — instead of hardcoding values that drift.
-    public Stock[] Stocks { get; set; } = Array.Empty<Stock>();
+    private WebApplicationFactory<TestEntryPoint>? _factory;
 
+    public IConfiguration Configuration { get; private set; } = null!;
+
+    /// <summary>
+    /// Clock the host uses. Override with a FakeTimeProvider in a derived fixture when tests
+    /// need to control time; the host never sees the wall clock unless you let it.
+    /// </summary>
     public TimeProvider TimeProvider { get; init; } = TimeProvider.System;
+
     protected virtual Dictionary<string, string?> GetAdditionalInMemorySettings() => new();
 
     protected abstract string GetConnectionString();
 
     /// <summary>
-    /// Configuration key the connection string is written to. Both providers read from the
-    /// standard "ConnectionStrings:DefaultConnection" key, so it defaults here; override only
-    /// if a fixture wires its provider to a different key.
+    /// Configuration key the connection string is written to. Defaults to the conventional
+    /// "ConnectionStrings:DefaultConnection"; override if your app reads a different key.
     /// </summary>
     protected virtual string ConnectionStringConfigKey => "ConnectionStrings:DefaultConnection";
 
     protected abstract void ConfigureDatabaseServices(IServiceCollection services);
 
     protected abstract Task StartDatabaseAsync();
-    
+
     protected abstract Task StopDatabaseAsync();
-    
+
     /// <summary>
     /// Creates an HTTP client builder for configuring authentication.
     /// </summary>
@@ -52,7 +56,7 @@ public abstract class WebAppFixtureBase : IAsyncLifetime
         EnsureInitialized();
         return new AuthenticatedClientBuilder(_factory!);
     }
-    
+
     public async Task InitializeAsync()
     {
         // Each phase depends on the previous one having completed. Expressing that as four
@@ -80,7 +84,7 @@ public abstract class WebAppFixtureBase : IAsyncLifetime
 
     private void BuildFactory()
     {
-        _factory = new WebApplicationFactory<TestProgram>()
+        _factory = new WebApplicationFactory<TestEntryPoint>()
             .WithWebHostBuilder(builder =>
             {
                 var inMemorySettings = new Dictionary<string, string?>
@@ -119,6 +123,9 @@ public abstract class WebAppFixtureBase : IAsyncLifetime
                     // faithful — [Authorize(AuthenticationSchemes = "Bearer")], the antiforgery
                     // filter's cookie-scheme check, etc. Requests with no header forward to the
                     // no-op scheme, which yields a clean 401 on challenge for anonymous callers.
+                    //
+                    // Registering a scheme your app does not use is harmless: nothing forwards to
+                    // it. Drop a line only if you want that scheme to be unreachable in tests.
                     services.AddAuthentication(TestAuthSchemes.Selector)
                         .AddPolicyScheme(TestAuthSchemes.Selector, TestAuthSchemes.Selector, options =>
                         {
@@ -129,17 +136,24 @@ public abstract class WebAppFixtureBase : IAsyncLifetime
                         .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(CookieAuthenticationDefaults.AuthenticationScheme, _ => { })
                         .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(JwtBearerDefaults.AuthenticationScheme, _ => { });
 
-                    // Replace TimeProvider
+                    // Deterministic time: replace whatever the app registered.
                     var existingProvider = services.FirstOrDefault(d => d.ServiceType == typeof(TimeProvider));
                     if (existingProvider != null)
-                    {
                         services.Remove(existingProvider);
-                    }
 
                     services.AddSingleton<TimeProvider>(TimeProvider);
+
+                    ConfigureAdditionalServices(services);
                 });
             });
     }
+
+    /// <summary>
+    /// Hook for replacing anything else the tests must not reach for real — an outbound HTTP
+    /// client, a message bus, a payment gateway. Runs last, so it can override the registrations
+    /// above. Left empty deliberately: swap infrastructure, not the behaviour under test.
+    /// </summary>
+    protected virtual void ConfigureAdditionalServices(IServiceCollection services) { }
 
     /// <summary>
     /// Forces the <see cref="WebApplicationFactory{TEntryPoint}"/> to build its host now and
@@ -155,51 +169,35 @@ public abstract class WebAppFixtureBase : IAsyncLifetime
     private async Task SeedAsync(IServiceProvider host)
     {
         using var scope = host.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var context = scope.ServiceProvider.GetRequiredService<TestDbContext>();
         await PopulateDbAsync(context);
     }
-    
+
+    /// <summary>
+    /// Creates the schema and seeds known data. The default creates the schema and stops.
+    ///
+    /// <para>Override in your own fixture base to seed, and store what you seeded on that class
+    /// so tests assert against known rows rather than hardcoded literals. Seed from
+    /// <see cref="TimeProvider"/>, never the wall clock.</para>
+    ///
+    /// <para>If your app uses EF migrations, call <c>MigrateAsync()</c> instead of
+    /// <c>EnsureCreatedAsync()</c> — that puts your migrations under test on every run.</para>
+    /// </summary>
+    protected virtual Task PopulateDbAsync(TestDbContext context)
+        => context.Database.EnsureCreatedAsync();
+
     public async Task DisposeAsync()
     {
         if (_factory != null)
-        {
             await _factory.DisposeAsync();
-        }
+
         await StopDatabaseAsync();
     }
-    
-    /// <summary>
-    /// PROJECT-SPECIFIC: everything below the EnsureCreated call is example data. Replace the
-    /// body with your own seeding; keep the shape — create the schema, seed deterministically
-    /// from <see cref="TimeProvider"/> rather than the wall clock, and store what you seeded on
-    /// the fixture so tests can assert against it.
-    ///
-    /// <para>If your app uses EF migrations rather than <c>EnsureCreated</c>, call
-    /// <c>context.Database.MigrateAsync()</c> here instead — that also gets your migrations
-    /// under test on every run.</para>
-    /// </summary>
-     protected virtual async Task PopulateDbAsync(AppDbContext context)
-    {
-        await context.Database.EnsureCreatedAsync();
 
-        var now = TimeProvider.GetUtcNow().UtcDateTime;
-        Stocks = Enumerable.Range(1, 100)
-            .Select(i => new Stock
-            {
-                Ticker = $"TICK{i:D3}",
-                Price = Math.Round(10m + i * 1.5m, 4),
-                LastUpdated = now
-            })
-            .ToArray();
-
-        context.Stocks.AddRange(Stocks);
-        await context.SaveChangesAsync();
-    }
-     
     /// <summary>
     /// Gets the underlying WebApplicationFactory for advanced scenarios.
     /// </summary>
-    public WebApplicationFactory<TestProgram> Factory
+    public WebApplicationFactory<TestEntryPoint> Factory
     {
         get
         {
@@ -207,42 +205,40 @@ public abstract class WebAppFixtureBase : IAsyncLifetime
             return _factory!;
         }
     }
-    
-    public async Task ExecuteDbContextAsync(Func<AppDbContext, Task> action)
+
+    public async Task ExecuteDbContextAsync(Func<TestDbContext, Task> action)
     {
         EnsureInitialized();
         using var scope = _factory!.Services.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var context = scope.ServiceProvider.GetRequiredService<TestDbContext>();
         await action(context);
     }
-    
-    public async Task<T> ExecuteDbContextAsync<T>(Func<AppDbContext, Task<T>> action)
+
+    public async Task<T> ExecuteDbContextAsync<T>(Func<TestDbContext, Task<T>> action)
     {
         EnsureInitialized();
         using var scope = _factory!.Services.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var context = scope.ServiceProvider.GetRequiredService<TestDbContext>();
         return await action(context);
     }
-    
+
     public T GetService<T>() where T : notnull
     {
         EnsureInitialized();
         using var scope = _factory!.Services.CreateScope();
         return scope.ServiceProvider.GetRequiredService<T>();
     }
-    
+
     public IServiceScope CreateScope()
     {
         EnsureInitialized();
         return _factory!.Services.CreateScope();
     }
-    
+
     private void EnsureInitialized()
     {
         if (_factory == null)
-        {
             throw new InvalidOperationException(
                 "WebAppFixture has not been initialized. Ensure InitializeAsync has been called.");
-        }
     }
 }

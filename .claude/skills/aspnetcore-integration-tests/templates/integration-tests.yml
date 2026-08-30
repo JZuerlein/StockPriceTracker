@@ -19,8 +19,8 @@ jobs:
       fail-fast: false           # every provider reports independently
       matrix:
         # Each value is a FullyQualifiedName fragment that selects exactly one provider's classes
-        # (AddStockWith<Provider>Tests, GetStockWith<Provider>Tests). The two fragments partition
-        # the suite exactly: 10 tests each, 20 total, no overlap with any test-method name.
+        # (e.g. AddThingWith<Provider>Tests). Check the two fragments partition your suite exactly
+        # and that neither can match a test-METHOD name.
         provider: [ Sqlite, PostgreSql ]
 
     env:

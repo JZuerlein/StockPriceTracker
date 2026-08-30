@@ -8,8 +8,16 @@ description: Set up and write ASP.NET Core integration tests that boot the real 
 Boot the **real application** in-memory with `WebApplicationFactory<T>` and drive it over HTTP.
 One test body runs against every database provider. One host serves every identity.
 
-This skill ships working templates under `templates/`. Copy and adapt them — do not retype
-them from scratch.
+Two directories, and the split is the point:
+
+- **`templates/`** — the infrastructure. Application-agnostic: it names no entity, no DbContext,
+  no role, no route. Copy these files, retarget the namespace, and they compile against any
+  ASP.NET Core app. Three small files are yours to fill in (`TestAliases.cs`,
+  `ClaimsBuilderExtensions.cs`, `TestCsrfSettings.cs`); the rest you never touch again.
+- **`examples/`** — the sample app this was extracted from. Read for shape, do not copy.
+
+If you find yourself editing a `templates/` file to name something from your domain, stop:
+that thing belongs in your own layer. `examples/ExampleFixtureBase.cs` shows where.
 
 ## When to use this
 
@@ -44,23 +52,25 @@ Work through these in order. Skip a step only if the project already satisfies i
 
 ### 1. Make the app's entry point reachable
 
-`WebApplicationFactory<T>` needs a public entry-point type in the app assembly. For a
-top-level-statements `Program.cs`, add at the bottom:
+`WebApplicationFactory<T>` needs a public entry-point type. Two routes:
+
+**A — use the app's own `Program`.** For top-level statements, add at the bottom of
+`Program.cs`:
 
 ```csharp
 public partial class Program { }
 ```
 
-Alternatively — and this is what the templates assume — define a **`TestProgram`** entry
-point inside the test project that composes only what the tests need (see
-`templates/TestProgram.cs`). Name it `TestProgram`, not `Program`, so it cannot collide with
-the app assembly's generated `Program` class. Use this when the real `Program.cs` does work
-you do not want in tests: external auth handshakes, background services, migrations on start.
+The test host then runs your real startup path. Prefer this when startup is test-safe.
 
-Decide between the two before writing fixtures — everything downstream is generic over it, and
-the choice also decides `GenerateProgramFile` in step 2. Whichever you pick, the type you name
-here is the `T` in `WebApplicationFactory<T>` throughout: the templates say `TestProgram`, so
-replace it with `Program` if you took the first route.
+**B — a `TestProgram` in the test project** that composes only what tests need (see
+`examples/ExampleTestProgram.cs`). Name it `TestProgram`, not `Program`, so it cannot collide
+with the app assembly's generated `Program`. Take this route when the real `Program.cs` does
+things you do not want on every test run — HTTPS redirection (which turns your requests into
+307s), database initialization, background services, outbound handshakes at startup.
+
+Whichever you pick, you name it **once**, in `TestAliases.cs` (step 3). Nothing else in the
+infrastructure mentions it. The choice also decides `GenerateProgramFile` in step 2.
 
 ### 2. Create the test project
 
@@ -95,14 +105,23 @@ Three settings matter beyond the obvious packages:
   greedy heaps and peak memory scales with core count: the suite passes locally and OOMs CI.
   Verify it landed in `bin/.../*.runtimeconfig.json` (`"System.GC.Server": false`).
 
-Add `appsettings.Testing.json` with any config the host requires at startup (JWT signing key,
-seed credentials) and copy it to the output directory. Tests must run with a bare
-`dotnet test` — no user secrets, no environment setup.
+### 3. Point the aliases at your app
 
-### 3. Add the fixture base
+Copy `templates/TestAliases.cs` and set two `global using` aliases:
 
-Copy `templates/WebAppFixtureBase.cs`. Replace `AppDbContext` and the seed entity with your
-own. It owns the whole lifecycle:
+```csharp
+global using TestEntryPoint = Program;      // or your TestProgram, from step 1
+global using TestDbContext  = AppDbContext; // your EF Core context
+```
+
+This is the whole adaptation seam for types. Every other infrastructure file refers to
+`TestEntryPoint` and `TestDbContext`, so there is no find-and-replace to do and nothing to
+redo the next time you copy these files into a different project. Set it first — nothing else
+compiles until the aliases resolve.
+
+### 4. Add the fixture base
+
+Copy `templates/WebAppFixtureBase.cs` unchanged. It owns the whole lifecycle:
 
 ```csharp
 await StartDatabaseAsync();   // 1. DB is up ...
@@ -120,7 +139,7 @@ that reintroduces laziness fails in setup with a clear message.
 In-memory configuration is added **last** so the per-fixture connection string wins over
 anything in `appsettings.Testing.json`.
 
-### 4. Add one fixture per database provider
+### 5. Add one fixture per database provider
 
 Copy `templates/DatabaseFixtures/`. Each fixture supplies a connection string, registers the
 provider, and starts/stops its database.
@@ -138,9 +157,28 @@ private static readonly Lazy<Task> ContainerStart = new(() => SharedContainer.St
 private readonly string _databaseName = $"MyApp_{Guid.NewGuid():N}";
 ```
 
+Both register `AddDbContext<TestDbContext>` directly, so they work against any context. If your
+app has its own registration extension and you would rather exercise *that* code path, call it
+from `ConfigureDatabaseServices` instead.
+
 Adding a third provider (SQL Server, MySQL) is one new fixture plus one subclass per test class.
 
-### 5. Add the test auth stack
+### 5b. Add your seeding layer
+
+The generic fixtures create the schema and stop. Seeded data is domain-shaped, so it lives in
+**your** code, not in `templates/`. `examples/ExampleFixtureBase.cs` shows the whole pattern in
+about 40 lines:
+
+1. an interface naming what your fixtures seed (`ISeededStocks`),
+2. one seeding routine shared by every provider,
+3. a thin fixture per provider that overrides `PopulateDbAsync` and implements the interface,
+4. a test base adding `where TFixture : WebAppFixtureBase, ISeededStocks` so test bodies can
+   say `Stocks[0]`.
+
+That last constraint is what keeps `WebAppTestBase` free of your domain while tests still read
+naturally. Seed from the fixture's `TimeProvider`, never `DateTime.UtcNow`.
+
+### 6. Add the test auth stack
 
 This is what makes **authorization** testable: it stubs out authentication so any test can
 declare a specific identity, then leaves every authorization rule running for real.
@@ -169,13 +207,15 @@ Exactly two files in that folder are yours to rewrite; the rest copy over unchan
 Both compile whatever you put in them, so a stale value fails as a confusing test result rather
 than a build error. See "Adapting to your project" below.
 
-### 6. Add the test base class
+### 7. Add the test base class
 
-Copy `templates/WebAppTestBase.cs`. It is generic over the fixture and forwards the helpers
-tests need: `CreateClient()`, `ExecuteDbContextAsync(...)`, `GetService<T>()`,
-`CreateScope()`, the seeded data array, and `Log(...)`.
+Copy `templates/WebAppTestBase.cs` unchanged. It is generic over the fixture and forwards the
+helpers every test needs regardless of application: `CreateClient()`,
+`ExecuteDbContextAsync(...)`, `GetService<T>()`, `CreateScope()`, `Factory`, `Configuration`
+and `Log(...)`. Your seeded data reaches tests through the thin subclass from step 5b, not
+through this file.
 
-### 7. Wire up CI
+### 8. Wire up CI
 
 Copy `templates/integration-tests.yml` into `.github/workflows/`. Two things it gets right:
 
@@ -188,32 +228,27 @@ Copy `templates/integration-tests.yml` into `.github/workflows/`. Two things it 
 
 ## Adapting to your project
 
-The templates are extracted from a working app, so some of them encode *that* app's
-assumptions. Two kinds, and the difference matters more than the list:
+Everything in `templates/` is application-agnostic except **three small files**. Fill those in
+and the rest compiles against your app untouched.
 
-**Fails to compile — safe.** You cannot ship these by accident; the build tells you.
+| File | What it holds | If you get it wrong |
+| --- | --- | --- |
+| `TestAliases.cs` | Two `global using` aliases: your entry point and your `DbContext`. | **Build error.** Safe — you cannot miss it. |
+| `AuthenticationHandlers/ClaimsBuilderExtensions.cs` | Your roles, policies, claim types. | **Silent.** See below. |
+| `AuthenticationHandlers/TestCsrfSettings.cs` | Your antiforgery route and header name. | **Silent.** Wrong endpoint 404s; wrong header attaches the token where nothing reads it, and every cookie-authenticated write returns 400 as though the test were broken. |
 
-| Where | What to change |
-| --- | --- |
-| `WebAppFixtureBase`, `WebAppTestBase` | `AppDbContext` → your context; the `Stock[] Stocks` seed array → your entity; the body of `PopulateDbAsync`. Use `MigrateAsync()` instead of `EnsureCreatedAsync()` if you have migrations — that puts them under test too. |
-| `DatabaseFixtures/*` | `AddSqlite()` / `AddPostgreSql()` are the sample app's own DI extensions. Call whatever registers your `DbContext`. |
-| `TestProgram.cs` | Entirely sample-specific. Compose only the services and endpoints your tests need. |
-| `ExampleEndpointTests.cs` | A worked example, not scaffolding. Delete it once you have real tests. |
+Plus two things that are configuration rather than code: `appsettings.Testing.json` (whatever
+your host demands at startup) and the `<ProjectReference>` in the csproj.
 
-**Compiles and runs — dangerous.** These are wrong silently: the request still authenticates,
-the endpoint still answers, and the assertion quietly stops meaning anything. Check them first.
+**The silent ones deserve the attention.** A `ClaimsBuilderExtensions.AsAdmin()` still carrying
+the sample's `administrator` role compiles perfectly in an app whose admin role is `Admin` or
+`SystemAdministrator`. The identity authenticates, then fails the policy — so the "403 for
+non-admins" test passes for entirely the wrong reason, while the *admin* test fails looking
+like a product bug. Rewrite that file before you trust any authorization result.
 
-| Where | Why it bites |
-| --- | --- |
-| `ClaimsBuilderExtensions.cs` | `AsAdmin()` hard-codes a role named `administrator`. In an app whose admin role is `Admin`, `SystemAdministrator`, or a policy over a claim, the identity authenticates fine and simply fails the policy — so a "403 for non-admins" test passes for the wrong reason, and the *admin* test fails looking like a product bug. **Rewrite this file first.** |
-| `TestCsrfSettings.cs` | `/antiforgery/token` and `X-XSRF-TOKEN` must match your app. Wrong endpoint 404s; wrong header attaches the token where nothing reads it, and every cookie-authenticated write returns 400 as though the test were broken. |
-| `appsettings.Testing.json` | Supplies `Jwt:Key` and seed credentials for the sample. Replace with whatever *your* host demands at startup. |
-| `PostgreSqlFixture` | The `YourApp_` database-name prefix is cosmetic, but keep it distinctive so a stray container is identifiable. |
-
-Everything else in `AuthenticationHandlers/` — the payload, the two handlers, the scheme
-names, the client builder, the CSRF extension methods — is domain-free and copies between
-projects unchanged. If you find yourself editing `ClaimsBuilder` itself rather than its
-extensions, that is the signal you are pushing project vocabulary into the generic layer.
+Then write your own layer on top (step 5b): seeding, seeded-data accessors, and any
+domain-shaped helper. If you ever find yourself editing a `templates/` file to name one of your
+types, that is the signal something belongs in your layer instead.
 
 ### Where project vocabulary belongs
 
@@ -239,8 +274,8 @@ called. A method belongs there if renaming a role or policy in the app should ch
 Every test class is an abstract generic base plus one thin subclass per provider:
 
 ```csharp
-public abstract class AddStockTestsBase<TFixture> : WebAppTestBase<TFixture>
-    where TFixture : WebAppFixtureBase
+public abstract class AddStockTestsBase<TFixture> : StockTestBase<TFixture>
+    where TFixture : WebAppFixtureBase, ISeededStocks
 {
     protected AddStockTestsBase(TFixture fixture, ITestOutputHelper output) : base(fixture, output) { }
 
@@ -263,18 +298,19 @@ public abstract class AddStockTestsBase<TFixture> : WebAppTestBase<TFixture>
 }
 
 // Same tests, two real databases - zero duplicated test code:
-public class AddStockWithSqliteTests : AddStockTestsBase<SqliteFixture>, IClassFixture<SqliteFixture>
+public class AddStockWithSqliteTests : AddStockTestsBase<StocksSqliteFixture>, IClassFixture<StocksSqliteFixture>
 {
-    public AddStockWithSqliteTests(SqliteFixture f, ITestOutputHelper o) : base(f, o) { }
+    public AddStockWithSqliteTests(StocksSqliteFixture f, ITestOutputHelper o) : base(f, o) { }
 }
 
-public class AddStockWithPostgreSqlTests : AddStockTestsBase<PostgreSqlFixture>, IClassFixture<PostgreSqlFixture>
+public class AddStockWithPostgreSqlTests : AddStockTestsBase<StocksPostgreSqlFixture>, IClassFixture<StocksPostgreSqlFixture>
 {
-    public AddStockWithPostgreSqlTests(PostgreSqlFixture f, ITestOutputHelper o) : base(f, o) { }
+    public AddStockWithPostgreSqlTests(StocksPostgreSqlFixture f, ITestOutputHelper o) : base(f, o) { }
 }
 ```
 
-See `templates/ExampleEndpointTests.cs` for a complete, copyable file.
+`StockTestBase` and the two `Stocks*Fixture` types are the project's own layer from step 5b —
+see `examples/ExampleFixtureBase.cs` and `examples/ExampleEndpointTests.cs` for the full pair.
 
 ### Conventions
 
@@ -289,7 +325,8 @@ See `templates/ExampleEndpointTests.cs` for a complete, copyable file.
   about.
 - Assert against the database with `ExecuteDbContextAsync(...)` when the HTTP response alone
   does not prove the write landed.
-- Read seeded data from the fixture's array (`Stocks[0]`) rather than hardcoding values.
+- Read seeded data from your fixture's seeded collection (`Stocks[0]`) rather than hardcoding
+  values that drift away from the seed.
 - Tests that share a fixture share a database. Either only read seeded data, or write rows
   with unique keys — never mutate a seeded row another test asserts on.
 
