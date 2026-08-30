@@ -1,0 +1,42 @@
+// EXAMPLE - aspnetcore-integration-tests skill. The sample app's own test-host entry point,
+// showing the shape described in step 1. Yours will compose different services.
+
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace YourApp.Tests.Integration;
+
+// Named TestProgram (not Program) so it cannot collide with the app assembly's
+// top-level-statement Program class.
+public class TestProgram
+{
+    public static void Main(string[] args)
+    {
+        var builder = WebApplication.CreateBuilder(args);
+
+        // Minimal service registration for integration tests.
+        // JWT bearer auth is intentionally omitted — the test infrastructure replaces
+        // authentication entirely via the stateless TestAuthHandler, registered once per host in
+        // WebAppFixtureBase and selected per request by the X-Test-Auth header.
+        builder.Services.AddIdentityCore<IdentityUser>()
+            .AddRoles<IdentityRole>()
+            .AddEntityFrameworkStores<AppDbContext>();
+        builder.Services.AddAuthentication();
+        builder.Services.AddAuthorization();
+        builder.Services.AddAntiforgery(options => options.HeaderName = "X-XSRF-TOKEN");
+        builder.Services.AddSingleton(TimeProvider.System);
+        builder.Services.AddSingleton(new TokenService("integration-test-jwt-secret-key-min-32-chars!!", "StockPriceTracker"));
+
+        var app = builder.Build();
+
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.UseAntiforgery();
+
+        app.MapAuthEndpoints();
+        app.MapStockEndpoints();
+
+        app.Run();
+    }
+}
